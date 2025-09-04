@@ -1,151 +1,166 @@
 import {Component} from 'react'
+
 import Cookies from 'js-cookie'
-import Loader from 'react-loader-spinner'
-import AppContext from '../../Context/AppContext'
 
-import Header from '../Header'
+import {HiFire} from 'react-icons/hi'
+
+import Navbar from '../Navbar'
+
 import Sidebar from '../Sidebar'
-import HomeVideoList from '../HomeVideoList'
-import {MainContainer, ListContainer} from './StyledComponents'
 
-const callStatusCodes = {
-  loading: 'LOADING',
-  success: 'SUCCESS',
-  failure: 'FAILURE',
+import LoaderCard from '../LoaderCard'
+
+import NxtWatchAppContext from '../../Context/NxtWatchAppContext'
+
+import OtherPagesVideoCard from '../OtherPagesVideoCard'
+
+import {
+  TrendingPageMainCard,
+  TrendingPageDisplayCard,
+  TrendingPageHeaderCard,
+  TrendingPageLogoCard,
+  TrendingPageHeading,
+  TrendingPageVideosListCard,
+  TrendingPageErrorCard,
+  TrendingPageErrorCardImage,
+  TrendingPageErrorCardHeading,
+  TrendingPageErrorCardDescription,
+  TrendingPageErrorCardButton,
+} from './styledComponent'
+
+const trendingRouteApiConstants = {
+  isLoading: 'LOADING',
+  isSuccess: 'SUCCESS',
+  isFailure: 'FAILURE',
 }
 
-class Trending extends Component {
-  state = {
-    apiCallStatus: callStatusCodes.loading,
-    videosListHome: {},
-  }
+class TrendingRoute extends Component {
+  state = {trendingRouteVideosList: [], trendingRoutePageStatus: 'INITIAL'}
 
   componentDidMount() {
-    this.getData()
+    this.getTrendingRouteList()
   }
 
-  onTryAgain = () => {
-    this.getData()
-  }
-
-  getData = async () => {
-    this.setState({apiCallStatus: callStatusCodes.loading})
+  getTrendingRouteList = async () => {
+    this.setState({
+      trendingRoutePageStatus: trendingRouteApiConstants.isLoading,
+    })
     const apiUrl = 'https://apis.ccbp.in/videos/trending'
     const jwtToken = Cookies.get('jwt_token')
     const options = {
+      method: 'GET',
       headers: {
         Authorization: `Bearer ${jwtToken}`,
       },
-      method: 'GET',
     }
-    const apiCall = await fetch(apiUrl, options)
-    if (apiCall.ok === true) {
-      const response = await apiCall.json()
-      const updatedData = response.videos.map(each => ({
-        id: each.id,
-        thumbnail: each.thumbnail_url,
-        title: each.title,
-        ChannelName: each.channel.name,
-        channelImage: each.channel.profile_image_url,
-        views: each.view_count,
-        published: each.published_at,
+    const response = await fetch(apiUrl, options)
+    const data = await response.json()
+    if (response.ok === true) {
+      const {videos} = data
+      const updatedList = videos.map(eachitem => ({
+        id: eachitem.id,
+        publishedAt: eachitem.published_at,
+        thumbnailUrl: eachitem.thumbnail_url,
+        title: eachitem.title,
+        viewCount: eachitem.view_count,
+        channel: {
+          name: eachitem.channel.name,
+          profileImageUrl: eachitem.channel.profile_image_url,
+        },
       }))
       this.setState({
-        videosListHome: updatedData,
-        apiCallStatus: callStatusCodes.success,
+        trendingRouteVideosList: updatedList,
+        trendingRoutePageStatus: trendingRouteApiConstants.isSuccess,
       })
     } else {
-      this.setState({apiCallStatus: callStatusCodes.failure})
+      this.setState({
+        trendingRoutePageStatus: trendingRouteApiConstants.isFailure,
+      })
     }
   }
 
-  renderVideoList = () => {
-    const {videosListHome} = this.state
+  getTrendingPageContentCard = isDarkModeEnabled => {
+    const {trendingRouteVideosList, trendingRoutePageStatus} = this.state
     return (
-      <div>
-        {videosListHome.length === 0 ? (
-          <div>
-            <img
-              src="https://assets.ccbp.in/frontend/react-js/nxt-watch-no-search-results-img.png "
-              alt="no videos"
+      <>
+        {trendingRoutePageStatus === 'SUCCESS' ? (
+          <TrendingPageVideosListCard isDarkModeEnabled={isDarkModeEnabled}>
+            {trendingRouteVideosList.map(eachitem => (
+              <OtherPagesVideoCard key={eachitem.id} data={eachitem} />
+            ))}
+          </TrendingPageVideosListCard>
+        ) : (
+          <TrendingPageErrorCard isDarkModeEnabled={isDarkModeEnabled}>
+            <TrendingPageErrorCardImage
+              src={
+                isDarkModeEnabled
+                  ? 'https://assets.ccbp.in/frontend/react-js/nxt-watch-failure-view-light-theme-img.png'
+                  : 'https://assets.ccbp.in/frontend/react-js/nxt-watch-failure-view-dark-theme-img.png'
+              }
+              alt="failure view"
             />
-            <h1>No Search results Found</h1>
-            <p>Try different key words or remove search filter</p>
-            <button
-              className="find-btn"
+            <TrendingPageErrorCardHeading isDarkModeEnabled={isDarkModeEnabled}>
+              Oops! Something Went Wrong
+            </TrendingPageErrorCardHeading>
+            <TrendingPageErrorCardDescription
+              isDarkModeEnabled={isDarkModeEnabled}
+            >
+              We are having some trouble to complete your request. Please try
+              again.
+            </TrendingPageErrorCardDescription>
+            <TrendingPageErrorCardButton
+              isDarkModeEnabled={isDarkModeEnabled}
               type="button"
-              onClick={this.onTryAgain}
+              onClick={this.getTrendingRouteList}
             >
               Retry
-            </button>
-          </div>
-        ) : (
-          <ListContainer>
-            {videosListHome.map(each => (
-              <HomeVideoList homeVideoList={each} key={each.id} />
-            ))}
-          </ListContainer>
+            </TrendingPageErrorCardButton>
+          </TrendingPageErrorCard>
         )}
-      </div>
+      </>
     )
   }
 
-  renderLoadingView = () => (
-    <div className="loader-container" data-testid="loader">
-      <Loader type="TailSpin" color="#0284C7" height={50} width={50} />
-    </div>
-  )
-
-  renderFailView = () => (
-    <div className="failure-view-container">
-      <img
-        src="https://assets.ccbp.in/frontend/react-js/nxt-watch-failure-view-light-theme-img.png"
-        alt="failure view"
-        className="failure-image"
-      />
-      <h1>Oops! Something Went Wrong</h1>
-      <p>We are having some trouble</p>
-      <button className="find-btn" type="button" onClick={this.onTryAgain}>
-        Retry
-      </button>
-    </div>
-  )
-
-  renderPortView = () => {
-    const {apiCallStatus} = this.state
-
-    switch (apiCallStatus) {
-      case callStatusCodes.success:
-        return this.renderVideoList()
-      case callStatusCodes.failure:
-        return this.renderFailView()
-      case callStatusCodes.loading:
-        return this.renderLoadingView()
-      default:
-        return null
-    }
+  getTrendingPageCard = () => {
+    const {trendingRoutePageStatus} = this.state
+    return (
+      <NxtWatchAppContext.Consumer>
+        {value => {
+          const {isDarkModeEnabled} = value
+          return (
+            <TrendingPageMainCard isDarkModeEnabled={isDarkModeEnabled}>
+              <Sidebar />
+              <TrendingPageDisplayCard isDarkModeEnabled={isDarkModeEnabled}>
+                <TrendingPageHeaderCard isDarkModeEnabled={isDarkModeEnabled}>
+                  <TrendingPageLogoCard isDarkModeEnabled={isDarkModeEnabled}>
+                    <HiFire />
+                  </TrendingPageLogoCard>
+                  <TrendingPageHeading isDarkModeEnabled={isDarkModeEnabled}>
+                    Trending
+                  </TrendingPageHeading>
+                </TrendingPageHeaderCard>
+                {trendingRoutePageStatus === 'LOADING' ? (
+                  <LoaderCard />
+                ) : (
+                  this.getTrendingPageContentCard(isDarkModeEnabled)
+                )}
+              </TrendingPageDisplayCard>
+            </TrendingPageMainCard>
+          )
+        }}
+      </NxtWatchAppContext.Consumer>
+    )
   }
 
   render() {
     return (
-      <AppContext.Consumer>
-        {value => {
-          const {lightTheme} = value
-          return (
-            <div>
-              <Header />
-              <div className="below-header-container">
-                <Sidebar />
-                <MainContainer lightTheme={lightTheme} data-testid="trending">
-                  <h1>Trending</h1>
-                  {this.renderPortView()}
-                </MainContainer>
-              </div>
-            </div>
-          )
-        }}
-      </AppContext.Consumer>
+      <>
+        <Navbar />
+        {this.getTrendingPageCard()}
+      </>
     )
   }
 }
-export default Trending
+
+export default TrendingRoute
+

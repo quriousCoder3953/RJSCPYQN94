@@ -1,116 +1,165 @@
 import {Component} from 'react'
-import Cookies from 'js-cookie'
+
 import {Redirect} from 'react-router-dom'
-import AppContext from '../../Context/AppContext'
 
-import {LoginButton, MainContainer} from './StyledComponents'
+import Cookies from 'js-cookie'
 
-class Login extends Component {
+import NxtWatchAppContext from '../../Context/NxtWatchAppContext'
+
+import LoaderCard from '../LoaderCard'
+
+import {
+  LoginRouteBgContainer,
+  LoginForm,
+  LoginFormLogo,
+  LoginFormUsernameLabel,
+  LoginFormUsernameInput,
+  LoginFormPasswordLabel,
+  LoginFormPasswordInput,
+  LoginFormShowPasswordCard,
+  LoginFormShowPasswordCheckbox,
+  LoginFormShowPasswordCheckboxLabel,
+  LoginFormButton,
+  LoginFormErrorMessage,
+} from './styledComponent'
+
+class LoginRoute extends Component {
   state = {
     username: '',
     password: '',
-    showLoginError: false,
-    error: '',
     showPassword: false,
+    isErrorGenerated: false,
+    errorMessage: '',
+    isLoaderLoading: true,
   }
 
-  inputUsername = event => {
+  onChangeUsername = event => {
     this.setState({username: event.target.value})
   }
 
-  inputPassword = event => {
+  onChangePassword = event => {
     this.setState({password: event.target.value})
   }
 
-  checkboxChange = () => {
-    this.setState(prevState => ({showPassword: !prevState.showPassword}))
+  onChangeTogglePassword = event => {
+    this.setState({showPassword: event.target.checked})
   }
 
-  onSubmitForm = async event => {
+  setSuccess = jwtToken => {
+    const {history} = this.props
+    Cookies.set('jwt_token', jwtToken, {expires: 30})
+    history.replace('/')
+  }
+
+  onSubmitUserDetails = async event => {
     event.preventDefault()
     const {username, password} = this.state
     const userDetails = {username, password}
-    const url = 'https://apis.ccbp.in/login'
-    const options = {
-      method: 'POST',
-      body: JSON.stringify(userDetails),
-    }
-    const response = await fetch(url, options)
+    const loginApiUrl = 'https://apis.ccbp.in/login'
+    const options = {method: 'POST', body: JSON.stringify(userDetails)}
+    const response = await fetch(loginApiUrl, options)
     const data = await response.json()
     if (response.ok === true) {
-      const jwtToken = data.jwt_token
-      Cookies.set('jwt_token', jwtToken, {expires: 1})
-      const {history} = this.props
-      history.replace('/')
+      this.setSuccess(data.jwt_token)
     } else {
-      const errorMsg = data.error_msg
-      this.setState({
-        showLoginError: true,
-        error: errorMsg,
-      })
+      this.setState({isErrorGenerated: true, errorMessage: data.error_msg})
     }
   }
 
   render() {
-    const {username, password, showLoginError, error, showPassword} = this.state
-    const inputType = showPassword ? 'text' : 'password'
+    const {
+      username,
+      password,
+      showPassword,
+      isErrorGenerated,
+      errorMessage,
+      isLoaderLoading,
+    } = this.state
     const jwtToken = Cookies.get('jwt_token')
     if (jwtToken !== undefined) {
       return <Redirect to="/" />
     }
-
     return (
-      <AppContext.Consumer>
+      <NxtWatchAppContext.Consumer>
         {value => {
-          const {lightTheme} = value
-          const webLogo = lightTheme
-            ? 'https://assets.ccbp.in/frontend/react-js/nxt-watch-logo-light-theme-img.png'
-            : 'https://assets.ccbp.in/frontend/react-js/nxt-watch-logo-dark-theme-img.png'
+          const {isDarkModeEnabled} = value
           return (
-            <MainContainer>
-              <div>
-                <img src={webLogo} alt="website logo" />
-                <div>
-                  <form onSubmit={this.onSubmitForm}>
-                    <div>
-                      <label htmlFor="username">USERNAME</label>
-                      <input
-                        type="text"
-                        id="username"
-                        onChange={this.inputUsername}
-                        value={username}
-                        placeholder="Username"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="password">PASSWORD</label>
-                      <input
-                        type={inputType}
-                        id="password"
-                        onChange={this.inputPassword}
-                        value={password}
-                        placeholder="Password"
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="checkbox"
-                        id="checkbox"
-                        onChange={this.checkboxChange}
-                      />
-                      <label htmlFor="checkbox">Show Password</label>
-                    </div>
-                    {showLoginError && <p>*{error}</p>}
-                    <LoginButton type="submit">Login</LoginButton>
-                  </form>
-                </div>
-              </div>
-            </MainContainer>
+            <LoginRouteBgContainer
+              isDarkModeEnabled={isDarkModeEnabled}
+              data-testid="loginRoute"
+            >
+              {isLoaderLoading ? (
+                <LoaderCard />
+              ) : (
+                <LoginForm
+                  isDarkModeEnabled={isDarkModeEnabled}
+                  onSubmit={this.onSubmitUserDetails}
+                >
+                  <LoginFormLogo
+                    src={
+                      isDarkModeEnabled
+                        ? 'https://assets.ccbp.in/frontend/react-js/nxt-watch-logo-dark-theme-img.png'
+                        : 'https://assets.ccbp.in/frontend/react-js/nxt-watch-logo-light-theme-img.png'
+                    }
+                    alt="website logo"
+                  />
+                  <LoginFormUsernameLabel
+                    htmlFor="username"
+                    isDarkModeEnabled={isDarkModeEnabled}
+                  >
+                    USERNAME
+                  </LoginFormUsernameLabel>
+                  <LoginFormUsernameInput
+                    type="text"
+                    placeholder="Username"
+                    value={username}
+                    id="username"
+                    onChange={this.onChangeUsername}
+                    isDarkModeEnabled={isDarkModeEnabled}
+                  />
+                  <LoginFormPasswordLabel
+                    htmlFor="password"
+                    isDarkModeEnabled={isDarkModeEnabled}
+                  >
+                    PASSWORD
+                  </LoginFormPasswordLabel>
+                  <LoginFormPasswordInput
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Password"
+                    value={password}
+                    id="password"
+                    onChange={this.onChangePassword}
+                    isDarkModeEnabled={isDarkModeEnabled}
+                  />
+                  <LoginFormShowPasswordCard>
+                    <LoginFormShowPasswordCheckbox
+                      type="checkbox"
+                      id="checkbox"
+                      checked={showPassword}
+                      onChange={this.onChangeTogglePassword}
+                      isDarkModeEnabled={isDarkModeEnabled}
+                    />
+                    <LoginFormShowPasswordCheckboxLabel
+                      htmlFor="checkbox"
+                      isDarkModeEnabled={isDarkModeEnabled}
+                    >
+                      Show Password
+                    </LoginFormShowPasswordCheckboxLabel>
+                  </LoginFormShowPasswordCard>
+                  <LoginFormButton type="submit">Login</LoginFormButton>
+                  {isErrorGenerated && (
+                    <LoginFormErrorMessage>
+                      * {errorMessage}
+                    </LoginFormErrorMessage>
+                  )}
+                </LoginForm>
+              )}
+            </LoginRouteBgContainer>
           )
         }}
-      </AppContext.Consumer>
+      </NxtWatchAppContext.Consumer>
     )
   }
 }
 
-export default Login
+export default LoginRoute

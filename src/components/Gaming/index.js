@@ -1,123 +1,159 @@
 import {Component} from 'react'
+
+import {Link} from 'react-router-dom'
+
 import Cookies from 'js-cookie'
-import Loader from 'react-loader-spinner'
 
-import Header from '../Header'
+import {SiYoutubegaming} from 'react-icons/si'
+
+import Navbar from '../Navbar'
+
 import Sidebar from '../Sidebar'
-import GameVideoList from '../GameVideoList'
-import AppContext from '../../Context/AppContext'
-import {MainContainer} from './StyledComponents'
 
-const callStatusCodes = {
-  loading: 'LOADING',
-  success: 'SUCCESS',
-  failure: 'FAILURE',
+import LoaderCard from '../LoaderCard'
+
+import NxtWatchAppContext from '../../Context/NxtWatchAppContext'
+
+import {
+  GameRouteBgContainer,
+  GameRouteMainCard,
+  GameRouteDisplayCard,
+  GameRouteHeaderCard,
+  GameRouteLogoCard,
+  GameRouteHeading,
+  GamePageErrorCard,
+  GamePageErrorCardImage,
+  GamePageErrorCardHeading,
+  GamePageErrorCardDescription,
+  GamePageErrorCardButton,
+  GamePageListCardBgContainer,
+  GamePageListCard,
+  GamePageListCardLogo,
+  GamePageListCardHeading,
+  GamePageListCardDescription,
+} from './styledComponent'
+
+const gamingRouteApiConstants = {
+  isLoading: 'LOADING',
+  isSuccess: 'SUCCESS',
+  isFailure: 'FAILURE',
 }
 
-class Gaming extends Component {
-  state = {
-    apiCallStatus: callStatusCodes.loading,
-    videosListHome: {},
-  }
+class GamingRoute extends Component {
+  state = {gamingRouteVideosList: [], gamePageStatus: 'INITIAL'}
 
   componentDidMount() {
-    this.getData()
+    this.getGamingVideosList()
   }
 
-  onTryAgain = () => {
-    this.getData()
-  }
-
-  getData = async () => {
-    this.setState({apiCallStatus: callStatusCodes.loading})
+  getGamingVideosList = async () => {
+    this.setState({gamePageStatus: gamingRouteApiConstants.isLoading})
     const apiUrl = 'https://apis.ccbp.in/videos/gaming'
     const jwtToken = Cookies.get('jwt_token')
     const options = {
+      method: 'GET',
       headers: {
         Authorization: `Bearer ${jwtToken}`,
       },
-      method: 'GET',
     }
-    const apiCall = await fetch(apiUrl, options)
-    if (apiCall.ok === true) {
-      const response = await apiCall.json()
-      const updatedData = response.videos.map(each => ({
-        id: each.id,
-        thumbnail: each.thumbnail_url,
-        title: each.title,
-        views: each.view_count,
+    const response = await fetch(apiUrl, options)
+    const data = await response.json()
+    if (response.ok === true) {
+      const updatedList = data.videos.map(eachitem => ({
+        id: eachitem.id,
+        thumbnailUrl: eachitem.thumbnail_url,
+        title: eachitem.title,
+        viewCount: eachitem.view_count,
       }))
       this.setState({
-        videosListHome: updatedData,
-        apiCallStatus: callStatusCodes.success,
+        gamingRouteVideosList: updatedList,
+        gamePageStatus: gamingRouteApiConstants.isSuccess,
       })
     } else {
-      this.setState({apiCallStatus: callStatusCodes.failure})
+      this.setState({gamePageStatus: gamingRouteApiConstants.isFailure})
     }
   }
 
-  renderVideoList = () => {
-    const {videosListHome} = this.state
-    return (
-      <div>
-        {videosListHome.length === 0 ? (
-          <div>
-            <img
-              src="https://assets.ccbp.in/frontend/react-js/nxt-watch-no-search-results-img.png "
-              alt="no videos"
+  gamePageErrorCard = () => (
+    <NxtWatchAppContext.Consumer>
+      {value => {
+        const {isDarkModeEnabled} = value
+        return (
+          <GamePageErrorCard isDarkModeEnabled={isDarkModeEnabled}>
+            <GamePageErrorCardImage
+              src={
+                isDarkModeEnabled
+                  ? 'https://assets.ccbp.in/frontend/react-js/nxt-watch-failure-view-light-theme-img.png'
+                  : 'https://assets.ccbp.in/frontend/react-js/nxt-watch-failure-view-dark-theme-img.png'
+              }
+              alt="failure view"
             />
-            <h1>No Search results Found</h1>
-            <p>Try different key words or remove search filter</p>
-            <button
-              className="find-btn"
+            <GamePageErrorCardHeading isDarkModeEnabled={isDarkModeEnabled}>
+              Oops! Something Went Wrong
+            </GamePageErrorCardHeading>
+            <GamePageErrorCardDescription isDarkModeEnabled={isDarkModeEnabled}>
+              We are having some trouble to complete your request. Please try
+              again.
+            </GamePageErrorCardDescription>
+            <GamePageErrorCardButton
+              isDarkModeEnabled={isDarkModeEnabled}
               type="button"
-              onClick={this.onTryAgain}
+              onClick={this.getGamingVideosList}
             >
               Retry
-            </button>
-          </div>
-        ) : (
-          <ul>
-            {videosListHome.map(each => (
-              <GameVideoList homeVideoList={each} key={each.id} />
-            ))}
-          </ul>
-        )}
-      </div>
+            </GamePageErrorCardButton>
+          </GamePageErrorCard>
+        )
+      }}
+    </NxtWatchAppContext.Consumer>
+  )
+
+  gamePageSuccessCard = () => {
+    const {gamingRouteVideosList} = this.state
+    return (
+      <NxtWatchAppContext.Consumer>
+        {value => {
+          const {isDarkModeEnabled} = value
+          return (
+            <GamePageListCardBgContainer isDarkModeEnabled={isDarkModeEnabled}>
+              {gamingRouteVideosList.map(eachitem => (
+                <Link
+                  key={eachitem.id}
+                  to={`/videos/${eachitem.id}`}
+                  className="game-page-link-item"
+                >
+                  <GamePageListCard isDarkModeEnabled={isDarkModeEnabled}>
+                    <GamePageListCardLogo
+                      src={eachitem.thumbnailUrl}
+                      alt="video thumbnail"
+                    />
+                    <GamePageListCardHeading
+                      isDarkModeEnabled={isDarkModeEnabled}
+                    >
+                      {eachitem.title}
+                    </GamePageListCardHeading>
+                    <GamePageListCardDescription>
+                      {eachitem.viewCount} Watching Worldwide
+                    </GamePageListCardDescription>
+                  </GamePageListCard>
+                </Link>
+              ))}
+            </GamePageListCardBgContainer>
+          )
+        }}
+      </NxtWatchAppContext.Consumer>
     )
   }
 
-  renderLoadingView = () => (
-    <div className="loader-container" data-testid="loader">
-      <Loader type="TailSpin" color="#0284C7" height={50} width={50} />
-    </div>
-  )
-
-  renderFailView = () => (
-    <div className="failure-view-container">
-      <img
-        src="https://assets.ccbp.in/frontend/react-js/nxt-watch-failure-view-light-theme-img.png"
-        alt="failure view"
-        className="failure-image"
-      />
-      <h1>Oops! Something Went Wrong</h1>
-      <p>We are having some trouble</p>
-      <button className="find-btn" type="button" onClick={this.onTryAgain}>
-        Retry
-      </button>
-    </div>
-  )
-
-  renderPortView = () => {
-    const {apiCallStatus} = this.state
-
-    switch (apiCallStatus) {
-      case callStatusCodes.success:
-        return this.renderVideoList()
-      case callStatusCodes.failure:
-        return this.renderFailView()
-      case callStatusCodes.loading:
-        return this.renderLoadingView()
+  getGamingRouteContentcard = () => {
+    const {gamePageStatus} = this.state
+    switch (gamePageStatus) {
+      case gamingRouteApiConstants.isLoading:
+        return <LoaderCard />
+      case gamingRouteApiConstants.isSuccess:
+        return this.gamePageSuccessCard()
+      case gamingRouteApiConstants.isFailure:
+        return this.gamePageErrorCard()
       default:
         return null
     }
@@ -125,24 +161,34 @@ class Gaming extends Component {
 
   render() {
     return (
-      <AppContext.Consumer>
+      <NxtWatchAppContext.Consumer>
         {value => {
-          const {lightTheme} = value
+          const {isDarkModeEnabled} = value
           return (
-            <MainContainer lightTheme={lightTheme} data-testid="gaming">
-              <Header />
-              <div className="below-header-container">
-                <Sidebar />
-                <div>
-                  <h1>Gaming</h1>
-                  {this.renderPortView()}
-                </div>
-              </div>
-            </MainContainer>
+            <>
+              <Navbar />
+              <GameRouteBgContainer isDarkModeEnabled={isDarkModeEnabled}>
+                <GameRouteMainCard isDarkModeEnabled={isDarkModeEnabled}>
+                  <Sidebar />
+                  <GameRouteDisplayCard isDarkModeEnabled={isDarkModeEnabled}>
+                    <GameRouteHeaderCard isDarkModeEnabled={isDarkModeEnabled}>
+                      <GameRouteLogoCard isDarkModeEnabled={isDarkModeEnabled}>
+                        <SiYoutubegaming />
+                      </GameRouteLogoCard>
+                      <GameRouteHeading isDarkModeEnabled={isDarkModeEnabled}>
+                        Gaming
+                      </GameRouteHeading>
+                    </GameRouteHeaderCard>
+                    {this.getGamingRouteContentcard()}
+                  </GameRouteDisplayCard>
+                </GameRouteMainCard>
+              </GameRouteBgContainer>
+            </>
           )
         }}
-      </AppContext.Consumer>
+      </NxtWatchAppContext.Consumer>
     )
   }
 }
-export default Gaming
+
+export default GamingRoute

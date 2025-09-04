@@ -1,199 +1,245 @@
-import {Component} from 'react'
-import Cookies from 'js-cookie'
-import Loader from 'react-loader-spinner'
-import {FaSearch} from 'react-icons/fa'
-import {AiOutlineClose} from 'react-icons/ai'
-import AppContext from '../../Context/AppContext'
-import {HomeBanner, BelowHeaderContainer} from './StyledComponents'
-import Header from '../Header'
-import Sidebar from '../Sidebar'
-import HomeVideoList from '../HomeVideoList'
 
-const callStatusCodes = {
-  loading: 'LOADING',
-  success: 'SUCCESS',
-  failure: 'FAILURE',
+import {Component} from 'react'
+
+import Cookies from 'js-cookie'
+
+import {BsSearch} from 'react-icons/bs'
+
+import NxtWatchPremiumCard from '../NxtWatchPremiumCard'
+import LoaderCard from '../LoaderCard'
+import Navbar from '../Navbar'
+import AppSidebar from '../Sidebar'
+import VideoCard from '../TrendingVideoItem'
+
+import NxtWatchAppContext from '../../Context/NxtWatchAppContext'
+
+import {
+  HomeRouteBgContainer,
+  HomeRouteDisplayCard,
+  HomePageMainDisplayCard,
+  HomePageVideosCard,
+  HomePageErrorCard,
+  HomePageErrorCardImage,
+  HomePageErrorCardHeading,
+  HomePageErrorCardDescription,
+  HomePageErrorCardButton,
+} from './styledComponent'
+
+import './index.css'
+
+const homePageApiConstants = {
+  isLoading: 'LOADING',
+  isSuccess: 'SUCCESS',
+  isFailure: 'FAILURE',
 }
 
-class Home extends Component {
+class HomeRoute extends Component {
   state = {
-    apiCallStatus: callStatusCodes.loading,
-    videosListHome: {},
-    searchInputVal: '',
-    showBanner: true,
+    isPremiumCardActive: true,
+    searchValue: '',
+    homePageVideosList: [],
+    homePageStatus: 'INITIAL',
   }
 
   componentDidMount() {
-    this.getData()
+    this.getHomePageList()
   }
 
-  onSearchInput = e => {
-    this.setState({searchInputVal: e.target.value})
+  onTogglePremiumCardDisplay = () => {
+    this.setState({isPremiumCardActive: false})
   }
 
-  bannerStatus = () => {
-    this.setState(prev => ({showBanner: !prev.showBanner}))
+  onChangeSearchValue = event => {
+    this.setState({searchValue: event.target.value})
   }
 
-  onTryAgain = () => {
-    this.getData()
+  startSearch = event => {
+    if (event.key === 'Enter') {
+      this.getHomePageList()
+    }
   }
 
-  getData = async () => {
-    const {searchInputVal} = this.state
-    this.setState({apiCallStatus: callStatusCodes.loading})
-    const apiUrl = `https://apis.ccbp.in/videos/all?search=${searchInputVal}`
+  getHomePageList = async () => {
+    this.setState({homePageStatus: homePageApiConstants.isLoading})
+    const {searchValue} = this.state
+    const apiUrl = `https://apis.ccbp.in/videos/all?search=${searchValue}`
     const jwtToken = Cookies.get('jwt_token')
     const options = {
+      method: 'GET',
       headers: {
         Authorization: `Bearer ${jwtToken}`,
       },
-      method: 'GET',
     }
-    const apiCall = await fetch(apiUrl, options)
-    if (apiCall.ok === true) {
-      const response = await apiCall.json()
-      const updatedData = response.videos.map(each => ({
-        id: each.id,
-        thumbnail: each.thumbnail_url,
-        title: each.title,
-        ChannelName: each.channel.name,
-        channelImage: each.channel.profile_image_url,
-        views: each.view_count,
-        published: each.published_at,
+    const response = await fetch(apiUrl, options)
+    if (response.ok === true) {
+      const data = await response.json()
+      const updatedList = data.videos.map(eachitem => ({
+        id: eachitem.id,
+        publishedAt: eachitem.published_at,
+        thumbnailUrl: eachitem.thumbnail_url,
+        title: eachitem.title,
+        viewCount: eachitem.view_count,
+        channel: {
+          name: eachitem.channel.name,
+          profileImageUrl: eachitem.channel.profile_image_url,
+        },
       }))
       this.setState({
-        videosListHome: updatedData,
-        apiCallStatus: callStatusCodes.success,
+        homePageVideosList: updatedList,
+        homePageStatus: homePageApiConstants.isSuccess,
       })
     } else {
-      this.setState({apiCallStatus: callStatusCodes.failure})
+      this.setState({homePageStatus: homePageApiConstants.isFailure})
     }
   }
 
-  renderVideoList = () => {
-    const {videosListHome} = this.state
+  getVideosListCard = () => {
+    const {homePageVideosList, searchValue} = this.state
     return (
-      <div>
-        {videosListHome.length === 0 ? (
-          <div>
-            <img
-              src="https://assets.ccbp.in/frontend/react-js/nxt-watch-no-search-results-img.png "
-              alt="no videos"
-            />
-            <h1>No Search results Found</h1>
-            <p>Try different key words or remove search filter</p>
-            <button
-              className="find-btn"
-              type="button"
-              onClick={this.onTryAgain}
-            >
-              Retry
-            </button>
-          </div>
-        ) : (
-          <ul>
-            {videosListHome.map(each => (
-              <HomeVideoList homeVideoList={each} key={each.id} />
-            ))}
-          </ul>
-        )}
-      </div>
+      <NxtWatchAppContext.Consumer>
+        {value => {
+          const {isDarkModeEnabled} = value
+          return (
+            <HomePageMainDisplayCard isDarkModeEnabled={isDarkModeEnabled}>
+              <div className="home-page-search-container">
+                <input
+                  type="search"
+                  value={searchValue}
+                  placeholder="Search"
+                  onChange={this.onChangeSearchValue}
+                  className="search-input"
+                  onKeyDown={this.startSearch}
+                />
+                <button
+                  className="search-button"
+                  type="button"
+                  onClick={this.getHomePageList}
+                >
+                  <BsSearch />
+                </button>
+              </div>
+              {homePageVideosList.length > 0 ? (
+                <HomePageVideosCard isDarkModeEnabled={isDarkModeEnabled}>
+                  {homePageVideosList.map(eachitem => (
+                    <VideoCard key={eachitem.id} data={eachitem} />
+                  ))}
+                </HomePageVideosCard>
+              ) : (
+                <HomePageErrorCard isDarkModeEnabled={isDarkModeEnabled}>
+                  <HomePageErrorCardImage
+                    src="https://assets.ccbp.in/frontend/react-js/nxt-watch-no-search-results-img.png"
+                    alt="no videos"
+                  />
+                  <HomePageErrorCardHeading
+                    isDarkModeEnabled={isDarkModeEnabled}
+                  >
+                    No Search results found
+                  </HomePageErrorCardHeading>
+                  <HomePageErrorCardDescription
+                    isDarkModeEnabled={isDarkModeEnabled}
+                  >
+                    Try different key words or remove search filter
+                  </HomePageErrorCardDescription>
+                  <HomePageErrorCardButton
+                    isDarkModeEnabled={isDarkModeEnabled}
+                    type="button"
+                    onClick={this.getHomePageList}
+                  >
+                    Retry
+                  </HomePageErrorCardButton>
+                </HomePageErrorCard>
+              )}
+            </HomePageMainDisplayCard>
+          )
+        }}
+      </NxtWatchAppContext.Consumer>
     )
   }
 
-  renderLoadingView = () => (
-    <div className="loader-container" data-testid="loader">
-      <Loader type="TailSpin" color="#0284C7" height={50} width={50} />
-    </div>
+  getHomePageFailureCard = () => (
+    <NxtWatchAppContext.Consumer>
+      {value => {
+        const {isDarkModeEnabled} = value
+        return (
+          <HomePageErrorCard isDarkModeEnabled={isDarkModeEnabled}>
+            <HomePageErrorCardImage
+              src={
+                isDarkModeEnabled
+                  ? 'https://assets.ccbp.in/frontend/react-js/nxt-watch-failure-view-dark-theme-img.png'
+                  : 'https://assets.ccbp.in/frontend/react-js/nxt-watch-failure-view-light-theme-img.png'
+              }
+              alt="failure view"
+            />
+            <HomePageErrorCardHeading isDarkModeEnabled={isDarkModeEnabled}>
+              Oops! Something Went Wrong
+            </HomePageErrorCardHeading>
+            <HomePageErrorCardDescription isDarkModeEnabled={isDarkModeEnabled}>
+              We are having some trouble to complete your request. Please try
+              again.
+            </HomePageErrorCardDescription>
+            <HomePageErrorCardButton
+              isDarkModeEnabled={isDarkModeEnabled}
+              type="button"
+              onClick={this.getHomePageList}
+            >
+              Retry
+            </HomePageErrorCardButton>
+          </HomePageErrorCard>
+        )
+      }}
+    </NxtWatchAppContext.Consumer>
   )
 
-  renderFailView = () => (
-    <div className="failure-view-container">
-      <img
-        src="https://assets.ccbp.in/frontend/react-js/nxt-watch-failure-view-light-theme-img.png"
-        alt="failure view"
-        className="failure-image"
-      />
-      <h1>Oops! Something Went Wrong</h1>
-      <p>We are having some trouble</p>
-      <button className="find-btn" type="button" onClick={this.onTryAgain}>
-        Retry
-      </button>
-    </div>
-  )
-
-  renderPortView = () => {
-    const {apiCallStatus} = this.state
-
-    switch (apiCallStatus) {
-      case callStatusCodes.success:
-        return this.renderVideoList()
-      case callStatusCodes.failure:
-        return this.renderFailView()
-      case callStatusCodes.loading:
-        return this.renderLoadingView()
+  displayHomePageContentCard = () => {
+    const {homePageStatus} = this.state
+    switch (homePageStatus) {
+      case homePageApiConstants.isLoading:
+        return <LoaderCard />
+      case homePageApiConstants.isSuccess:
+        return this.getVideosListCard()
+      case homePageApiConstants.isFailure:
+        return this.getHomePageFailureCard()
       default:
         return null
     }
   }
 
   render() {
+    const {isPremiumCardActive} = this.state
     return (
-      <AppContext.Consumer>
+      <NxtWatchAppContext.Consumer>
         {value => {
-          const {lightTheme} = value
-          const {showBanner, searchInputVal} = this.state
+          const {isDarkModeEnabled} = value
           return (
-            <div>
-              <Header />
-              <BelowHeaderContainer
-                lightTheme={lightTheme}
-                data-testid="home"
-                className="below-header-container"
+            <>
+              <Navbar />
+              <HomeRouteBgContainer
+                isDarkModeEnabled={isDarkModeEnabled}
+                data-testid="homeRoute"
               >
-                <Sidebar />
-                <div>
-                  {showBanner ? (
-                    <HomeBanner data-testid="banner">
-                      <img
-                        src="https://assets.ccbp.in/frontend/react-js/nxt-watch-logo-light-theme-img.png"
-                        alt="nxt watch logo"
-                      />
-                      <button
-                        type="button"
-                        data-testid="close"
-                        onClick={this.bannerStatus}
-                      >
-                        <AiOutlineClose />
-                      </button>
-                      <p>Buy Nxt Watch Premium plans with UPI</p>
-                      <button type="button">GET IT NOW</button>
-                    </HomeBanner>
-                  ) : null}
-                  <div>
-                    <input
-                      type="search"
-                      placeholder="Search"
-                      value={searchInputVal}
-                      onChange={this.onSearchInput}
+                <AppSidebar />
+                <HomeRouteDisplayCard
+                  idDarkModeEnabled={isDarkModeEnabled}
+                  isPremiumCardActive={isPremiumCardActive}
+                >
+                  {isPremiumCardActive && (
+                    <NxtWatchPremiumCard
+                      onTogglePremiumCardDisplay={
+                        this.onTogglePremiumCardDisplay
+                      }
+                      isDarkModeEnabled={isDarkModeEnabled}
                     />
-                    <button
-                      type="button"
-                      onClick={this.onTryAgain}
-                      data-testid="searchButton"
-                    >
-                      <FaSearch />
-                    </button>
-                  </div>
-                  {this.renderPortView()}
-                </div>
-              </BelowHeaderContainer>
-            </div>
+                  )}
+                  {this.displayHomePageContentCard()}
+                </HomeRouteDisplayCard>
+              </HomeRouteBgContainer>
+            </>
           )
         }}
-      </AppContext.Consumer>
+      </NxtWatchAppContext.Consumer>
     )
   }
 }
-export default Home
+
+export default HomeRoute
+

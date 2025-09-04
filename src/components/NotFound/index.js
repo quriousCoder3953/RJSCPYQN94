@@ -1,30 +1,69 @@
-import {Link} from 'react-router-dom'
-import AppContext from '../../Context/AppContext'
+import {Component} from 'react'
 
-const NotFound = () => (
-  <AppContext.Consumer>
-    {value => {
-      const {lightTheme} = value
-      const imageUrlNotFound = lightTheme
-        ? 'https://assets.ccbp.in/frontend/react-js/nxt-watch-not-found-light-theme-img.png'
-        : 'https://assets.ccbp.in/frontend/react-js/nxt-watch-not-found-dark-theme-img.png'
-      return (
-        <div className="not-found-container">
-          <img src={imageUrlNotFound} alt="not found" className="not found" />
-          <h1 className="not-found-heading">Page Not Found</h1>
-          <p className="not-found-para">
-            We are sorry, the page you requested could not be found. Please go
-            back to homepage.
-          </p>
-          <Link to="/">
-            <button type="button" className="home-btn">
-              Go Back to Home
-            </button>
-          </Link>
-        </div>
-      )
-    }}
-  </AppContext.Consumer>
-)
+import NxtWatchAppContext from '../../Context/NxtWatchAppContext'
 
-export default NotFound
+import Navbar from '../Navbar'
+import Sidebar from '../Sidebar'
+import LoaderCard from '../LoaderCard'
+
+import {
+  NotFoundDisplayCard,
+  NotFoundBgContainer,
+  NotFoundImage,
+  NotFoundHeading,
+  NotFoundDescription,
+  NotFoundButton,
+} from './styledComponent'
+
+class NotFoundRoute extends Component {
+  state = {isLoaderLoading: true}
+
+  navigateToHome = () => {
+    const {history} = this.props
+    history.replace('/')
+  }
+
+  render() {
+    const {isLoaderLoading} = this.state
+    return (
+      <NxtWatchAppContext.Consumer>
+        {value => {
+          const {isDarkModeEnabled} = value
+          return (
+            <>
+              <Navbar />
+              <NotFoundDisplayCard isDarkModeEnabled={isDarkModeEnabled}>
+                <Sidebar />
+                {isLoaderLoading ? (
+                  <LoaderCard />
+                ) : (
+                  <NotFoundBgContainer isDarkModeEnabled={isDarkModeEnabled}>
+                    <NotFoundImage
+                      src={
+                        isDarkModeEnabled
+                          ? 'https://assets.ccbp.in/frontend/react-js/nxt-watch-not-found-dark-theme-img.png'
+                          : 'https://assets.ccbp.in/frontend/react-js/nxt-watch-not-found-light-theme-img.png'
+                      }
+                      alt="not found"
+                    />
+                    <NotFoundHeading isDarkModeEnabled={isDarkModeEnabled}>
+                      Page Not Found
+                    </NotFoundHeading>
+                    <NotFoundDescription isDarkModeEnabled={isDarkModeEnabled}>
+                      We are sorry, the page you requested could not be found.
+                    </NotFoundDescription>
+                    <NotFoundButton type="button" onClick={this.navigateToHome}>
+                      Navigate To Home
+                    </NotFoundButton>
+                  </NotFoundBgContainer>
+                )}
+              </NotFoundDisplayCard>
+            </>
+          )
+        }}
+      </NxtWatchAppContext.Consumer>
+    )
+  }
+}
+
+export default NotFoundRoute
